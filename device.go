@@ -18,5 +18,7 @@ type Device struct {
 	Application     string            `json:"application"`
 	DeviceId        map[string]string `json:"device_id"`
 	SimSerial       []string          `json:"sim_serial"`
+	SimOperator     []string          `json:"sim_operator"`
 	Geolocation     map[string]string `json:"geolocation"`
+	ClientIp        string            `json:"client_ip"`
 }

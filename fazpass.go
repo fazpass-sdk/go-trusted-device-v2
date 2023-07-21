@@ -1,7 +1,6 @@
 package gotdv2
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -9,303 +8,32 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"fmt"
-	"io"
-	"net/http"
-
-	. "github.com/fazpass-sdk/go-trusted-device-v2/dto"
 	"os"
 )
 
 type Fazpass struct {
-	PrivateKey  *rsa.PrivateKey
-	MerchantKey string
-	BaseUrl     string
+	PrivateKey *rsa.PrivateKey
 }
 
-func (f Fazpass) CheckDevice(picId string, meta string, appId string) (*Device, error) {
-	device := &Device{}
-	if picId == "" || meta == "" || appId == "" {
-		return device, errors.New("pic id, meta or app id cannot be empty")
-	}
-	url := fmt.Sprintf("%s/check", f.BaseUrl)
-	// Create request body
-	requestBody := CheckRequest{
-		PicId:         picId,
-		Meta:          meta,
-		MerchantAppId: appId,
-	}
-	body, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-	// Create a new request using http
-	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	// Add authorization header to the req
-	bearerToken := fmt.Sprintf("Bearer %s", f.MerchantKey) // assuming MerchantKey is the bearer token
-	req.Header.Add("Authorization", bearerToken)
-	req.Header.Add("Content-Type", "application/json")
-
-	// Send req using http Client
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned status code %d", resp.StatusCode)
-	}
-	var response Response
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
-	}
-	unwrapBase64, err := base64.StdEncoding.DecodeString(response.Data.Meta)
+func (f *Fazpass) Extract(meta string) (Device, error) {
+	d := Device{}
+	unwrapBase64, err := base64.StdEncoding.DecodeString(meta)
 	decrypted, err := decryptWithPrivateKey(unwrapBase64, f.PrivateKey)
-	err = json.Unmarshal(decrypted, &device)
 	if err != nil {
-		return nil, err
+		return d, errors.New("invalid meta or key")
 	}
-	return device, nil
+	jsonString := string(decrypted)
+	err = json.Unmarshal([]byte(jsonString), &d)
+	if err != nil {
+		return d, err
+	}
+	return d, nil
 }
 
-func (f Fazpass) CheckAsyncDevice(picId string, meta string, appId string) (<-chan *Device, <-chan error) {
-	deviceChan := make(chan *Device, 1)
-	errChan := make(chan error, 1)
-	go func() {
-		device, err := f.CheckDevice(picId, meta, appId)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		deviceChan <- device
-	}()
-	return deviceChan, errChan
-}
-
-func (f Fazpass) EnrollDevice(picId string, meta string, appId string) (*Device, error) {
-	device := &Device{}
-	if picId == "" || meta == "" || appId == "" {
-		return device, errors.New("pic id, meta or app id cannot be empty")
-	}
-	url := fmt.Sprintf("%s/enroll", f.BaseUrl)
-	// Create request body
-	requestBody := EnrollRequest{
-		PicId:         picId,
-		Meta:          meta,
-		MerchantAppId: appId,
-	}
-	body, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-	// Create a new request using http
-	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	// Add authorization header to the req
-	bearerToken := fmt.Sprintf("Bearer %s", f.MerchantKey) // assuming MerchantKey is the bearer token
-	req.Header.Add("Authorization", bearerToken)
-	req.Header.Add("Content-Type", "application/json")
-
-	// Send req using http Client
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned status code %d", resp.StatusCode)
-	}
-	var response Response
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
-	}
-	unwrapBase64, err := base64.StdEncoding.DecodeString(response.Data.Meta)
-	decrypted, err := decryptWithPrivateKey(unwrapBase64, f.PrivateKey)
-	err = json.Unmarshal(decrypted, &device)
-	if err != nil {
-		return nil, err
-	}
-	return device, nil
-}
-
-func (f Fazpass) EnrollAsyncDevice(picId string, meta string, appId string) (<-chan *Device, <-chan error) {
-	deviceChan := make(chan *Device, 1)
-	errChan := make(chan error, 1)
-	go func() {
-		device, err := f.EnrollDevice(picId, meta, appId)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		deviceChan <- device
-	}()
-
-	return deviceChan, errChan
-}
-
-func (f Fazpass) ValidateDevice(fazpassId string, meta string, appId string) (*Device, error) {
-	device := &Device{}
-	if fazpassId == "" || meta == "" || appId == "" {
-		return device, errors.New("fazpass id, meta or app id cannot be empty")
-	}
-	url := fmt.Sprintf("%s/validate", f.BaseUrl)
-	// Create request body
-	requestBody := ValidateRequest{
-		FazpassId:     fazpassId,
-		Meta:          meta,
-		MerchantAppId: appId,
-	}
-	body, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-	// Create a new request using http
-	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	// Add authorization header to the req
-	bearerToken := fmt.Sprintf("Bearer %s", f.MerchantKey) // assuming MerchantKey is the bearer token
-	req.Header.Add("Authorization", bearerToken)
-	req.Header.Add("Content-Type", "application/json")
-
-	// Send req using http Client
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned status code %d", resp.StatusCode)
-	}
-	var response Response
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
-	}
-	unwrapBase64, err := base64.StdEncoding.DecodeString(response.Data.Meta)
-	decrypted, err := decryptWithPrivateKey(unwrapBase64, f.PrivateKey)
-	err = json.Unmarshal(decrypted, &device)
-	if err != nil {
-		return nil, err
-	}
-	return device, nil
-}
-
-func (f Fazpass) ValidateAsyncDevice(fazpassId string, meta string, appId string) (<-chan *Device, <-chan error) {
-	deviceChan := make(chan *Device, 1)
-	errChan := make(chan error, 1)
-	go func() {
-		device, err := f.ValidateDevice(fazpassId, meta, appId)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		deviceChan <- device
-	}()
-
-	return deviceChan, errChan
-}
-
-func (f Fazpass) RemoveDevice(fazpassId string, meta string, appId string) (*Device, error) {
-	device := &Device{}
-	if fazpassId == "" || meta == "" || appId == "" {
-		return device, errors.New("fazpass id, meta or app id cannot be empty")
-	}
-	url := fmt.Sprintf("%s/remove", f.BaseUrl)
-	// Create request body
-	requestBody := ValidateRequest{
-		FazpassId:     fazpassId,
-		Meta:          meta,
-		MerchantAppId: appId,
-	}
-	body, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-	// Create a new request using http
-	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	// Add authorization header to the req
-	bearerToken := fmt.Sprintf("Bearer %s", f.MerchantKey) // assuming MerchantKey is the bearer token
-	req.Header.Add("Authorization", bearerToken)
-	req.Header.Add("Content-Type", "application/json")
-
-	// Send req using http Client
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned status code %d", resp.StatusCode)
-	}
-	var response Response
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return nil, err
-	}
-	unwrapBase64, err := base64.StdEncoding.DecodeString(response.Data.Meta)
-	decrypted, err := decryptWithPrivateKey(unwrapBase64, f.PrivateKey)
-	err = json.Unmarshal(decrypted, &device)
-	if err != nil {
-		return nil, err
-	}
-	return device, nil
-}
-
-func (f Fazpass) RemoveAsyncDevice(fazpassId string, meta string, appId string) (<-chan *Device, <-chan error) {
-	deviceChan := make(chan *Device, 1)
-	errChan := make(chan error, 1)
-	go func() {
-		device, err := f.RemoveDevice(fazpassId, meta, appId)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		deviceChan <- device
-	}()
-
-	return deviceChan, errChan
-}
-
-func Initialize(privateKeyPath string, baseUrl string, merchantKey string) (TrustedDevice, error) {
+func Initialize(privateKeyPath string) (Fazpass, error) {
 	var privateKey *rsa.PrivateKey
 	f := Fazpass{}
-	if privateKeyPath == "" || baseUrl == "" || merchantKey == "" {
+	if privateKeyPath == "" {
 		return f, errors.New("parameter cannot be empty")
 	}
 	private, errFile := os.ReadFile(privateKeyPath)
@@ -313,8 +41,6 @@ func Initialize(privateKeyPath string, baseUrl string, merchantKey string) (Trus
 		return f, errors.New("file not found")
 	}
 	privateKey, _ = bytesToPrivateKey(private)
-	f.BaseUrl = baseUrl
-	f.MerchantKey = merchantKey
 	f.PrivateKey = privateKey
 	return f, nil
 }
@@ -322,11 +48,27 @@ func Initialize(privateKeyPath string, baseUrl string, merchantKey string) (Trus
 func bytesToPrivateKey(priv []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(priv)
 	b := block.Bytes
+	var err error
 	key, err := x509.ParsePKCS1PrivateKey(b)
+
 	return key, err
 }
 
 func decryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	plaintext, err := rsa.DecryptPKCS1v15(rand.Reader, priv, ciphertext)
 	return plaintext, err
+}
+
+func bytesToPublicKey(pub []byte) *rsa.PublicKey {
+	block, _ := pem.Decode(pub)
+	b := block.Bytes
+	ifc, _ := x509.ParsePKIXPublicKey(b)
+	key, _ := ifc.(*rsa.PublicKey)
+	return key
+}
+
+func encryptWithPublicKey(msg []byte, pub *rsa.PublicKey) []byte {
+	ciphertext, _ := rsa.EncryptPKCS1v15(rand.Reader, pub, msg)
+	return ciphertext
+
 }

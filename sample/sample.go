@@ -6,17 +6,12 @@ import (
 )
 
 func main() {
-	td, err := gotdv2.Initialize("./sample/private.key", "http://localhost:8080", "YOUR_KEY")
+	td, err := gotdv2.Initialize("./sample/private.key")
 	if err != nil {
 		log.Println(err)
 	}
-	deviceChan, errChan := td.CheckAsyncDevice("picId", "meta", "appId")
-	select {
-	case device := <-deviceChan:
-		log.Println(device)
-		// handle device
-	case err := <-errChan:
+	_, err = td.Extract("YOUR_META")
+	if err != nil {
 		log.Println(err)
-		// handle error
 	}
 }
