@@ -16,7 +16,7 @@ td, err := gotdv2.Initialize("./sample/private.key")
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(device.FazzpassId)
+	log.Println(meta.FazzpassId)
 ```
 What Inside ?
 ```go
