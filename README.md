@@ -12,7 +12,7 @@ td, err := gotdv2.Initialize("./sample/private.key")
 	if err != nil {
 		log.Println(err)
 	}
-	device, err = td.Extract("YOUR_META")
+	meta, err = td.Extract("YOUR_META")
 	if err != nil {
 		log.Println(err)
 	}
