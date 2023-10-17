@@ -1,6 +1,6 @@
 package gotdv2
 
-type Device struct {
+type Meta struct {
 	FazpassId       string            `json:"fazpass_id"`
 	IsActive        bool              `json:"is_active"`
 	Scoring         float64           `json:"scoring"`
@@ -16,9 +16,18 @@ type Device struct {
 	IsScreenSharing bool              `json:"is_screen_sharing"`
 	IsDebug         bool              `json:"is_debug"`
 	Application     string            `json:"application"`
-	DeviceId        map[string]string `json:"device_id"`
+	Device          Device            `json:"device_id"`
 	SimSerial       []string          `json:"sim_serial"`
 	SimOperator     []string          `json:"sim_operator"`
 	Geolocation     map[string]string `json:"geolocation"`
 	ClientIp        string            `json:"client_ip"`
+	LinkedDevices   []Device          `json:"notifiable_devices"`
+}
+
+type Device struct {
+	Name      string `json:"name"`
+	OSVersion string `json:"os_version"`
+	Series    string `json:"series"`
+	CPU       string `json:"cpu"`
+	ID        string `json:"id"`
 }

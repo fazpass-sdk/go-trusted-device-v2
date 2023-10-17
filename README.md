@@ -18,3 +18,37 @@ td, err := gotdv2.Initialize("./sample/private.key")
 	}
 	log.Println(device.FazzpassId)
 ```
+What Inside ?
+```go
+type Meta struct {
+	FazpassId       string            
+	IsActive        bool              
+	Scoring         float64           
+	RiskLevel       string            
+	TimeStamp       string            
+	Platform        string            
+	IsRooted        bool              
+	IsEmulator      bool              
+	IsGpsSpoof      bool              
+	IsAppTempering  bool              
+	IsVpn           bool              
+	IsCloneApp      bool              
+	IsScreenSharing bool              
+	IsDebug         bool              
+	Application     string            
+	Device          Device            
+	SimSerial       []string          
+	SimOperator     []string          
+	Geolocation     map[string]string 
+	ClientIp        string            
+	LinkedDevices   []Device          
+}
+
+type Device struct {
+	Name      string 
+	OSVersion string 
+	Series    string 
+	CPU       string 
+	ID        string 
+}
+```

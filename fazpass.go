@@ -15,19 +15,19 @@ type Fazpass struct {
 	PrivateKey *rsa.PrivateKey
 }
 
-func (f *Fazpass) Extract(meta string) (Device, error) {
-	d := Device{}
+func (f *Fazpass) Extract(meta string) (Meta, error) {
+	m := Meta{}
 	unwrapBase64, err := base64.StdEncoding.DecodeString(meta)
 	decrypted, err := decryptWithPrivateKey(unwrapBase64, f.PrivateKey)
 	if err != nil {
-		return d, errors.New("invalid meta or key")
+		return m, errors.New("invalid meta or key")
 	}
 	jsonString := string(decrypted)
-	err = json.Unmarshal([]byte(jsonString), &d)
+	err = json.Unmarshal([]byte(jsonString), &m)
 	if err != nil {
-		return d, err
+		return m, err
 	}
-	return d, nil
+	return m, nil
 }
 
 func Initialize(privateKeyPath string) (Fazpass, error) {
