@@ -22,6 +22,7 @@ type Meta struct {
 	Geolocation     map[string]string `json:"geolocation"`
 	ClientIp        string            `json:"client_ip"`
 	LinkedDevices   []Device          `json:"notifiable_devices"`
+	IsNotifiable    bool              `json:"is_notifiable"`
 }
 
 type Device struct {
