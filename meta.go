@@ -1,6 +1,7 @@
 package gotdv2
 
 type Meta struct {
+	Challenge       string            `json:"challenge"`
 	FazpassId       string            `json:"fazpass_id"`
 	IsActive        bool              `json:"is_active"`
 	Scoring         float64           `json:"scoring"`
@@ -12,6 +13,7 @@ type Meta struct {
 	IsGpsSpoof      bool              `json:"is_gps_spoof"`
 	IsAppTempering  bool              `json:"is_app_tempering"`
 	IsVpn           bool              `json:"is_vpn"`
+	Biometric       Biometric         `json:"biometric"`
 	IsCloneApp      bool              `json:"is_clone_app"`
 	IsScreenSharing bool              `json:"is_screen_sharing"`
 	IsDebug         bool              `json:"is_debug"`
@@ -31,4 +33,9 @@ type Device struct {
 	Series    string `json:"series"`
 	CPU       string `json:"cpu"`
 	ID        string `json:"id"`
+}
+
+type Biometric struct {
+	Level      string `json:"level"`
+	IsChanging bool   `json:"is_changing"`
 }
